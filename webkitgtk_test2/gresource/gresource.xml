@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+	<gresource prefix="/mytask">
+		<file compressed="true">MyFilter.glade</file>
+		<file compressed="true">MyFilterSetDialog.glade</file>
+		<file compressed="true">MyQuery.glade</file>
+		<file compressed="true">MyQuerySetDialog.glade</file>
+		<file compressed="true">edit-find.svg</file>
+		<file compressed="true">go-next.svg</file>
+		<file compressed="true">go-up.svg</file>
+		<file compressed="true">go-down.svg</file>
+		<file compressed="true">go-previous.svg</file>
+		<file compressed="true">MyDownload.glade</file>
+		<file compressed="true">document-save.png</file>
+		<file compressed="true">process-stop.png</file>
+		<file compressed="true">window-close.png</file>
+		<file compressed="true">gtk-ok.png</file>
+		<file compressed="true">view-filter.svg</file>
+		<file compressed="true">MyJsCmdSetDialog.glade</file>
+		<file compressed="true">MyJsCmd.glade</file>
+		<file compressed="true">text-x-script.svg</file>
+		<file compressed="true">MyLoader.glade</file>
+		<file compressed="true">view-web-browser-dom-tree.svg</file>
+		<file compressed="true">MyLoaderSetDialog.glade</file>
+		<file compressed="true">media-playback-pause.svg</file>
+		<file compressed="true">media-playback-start.svg</file>
+		<file compressed="true">media-playback-stop.svg</file>
+		<file compressed="true">MyDl.glade</file>
+		<file compressed="true">MyTask.glade</file>
+		<file compressed="true">flag.svg</file>
+		<file compressed="true">MyStart.glade</file>
+		<file compressed="true">MyStartSetDialog.glade</file>
+		<file compressed="true">view-refresh-symbolic.symbolic.png</file>
+		<file compressed="true">web-browser-symbolic.svg</file>
+		<file compressed="true">network-transmit-receive-symbolic.svg</file>
+	</gresource>
+	<gresource prefix="/myoperater">
+		<file compressed="true">MyOperater.glade</file>
+	</gresource>
+	<gresource prefix="/mymainui">
+		<file compressed="true">MyMainUi.glade</file>
+	</gresource>
+</gresources>

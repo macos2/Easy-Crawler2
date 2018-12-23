@@ -1,0 +1,4 @@
+#webkitextension: ../webkitextension.c
+#	gcc ../webkitextension.c -shared -w -fPIC -DPIC -o ../webkitextension.so `pkg-config --cflags --libs webkit2gtk-web-extension-4.0`
+all:
+	+make -C ../gresource
