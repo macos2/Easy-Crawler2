@@ -18,5 +18,5 @@ To Build the programme ,go into the `Release` dir, and run `make`to build the so
 
 Use
 -----
-You should have the knowledge of Xpath and XML file.
+You should have the knowledge of Css Selector,Javascript and Ajax.
 
