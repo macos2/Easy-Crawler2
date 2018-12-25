@@ -1,7 +1,7 @@
 Easy-Crawler2
 ============
 This is a crawler programme writen in C .it works on webkit2gtk-4.0 and have a gui writen with Gtk3.
-![](https://github.com/macos2/Easy-Crawler2/blob/master/webkitgtk_test2/screen-shoot.png)
+![](https://github.com/macos2/Easy-Crawler2/blob/master/screen-shoot.png)
 
 Stage
 ------
