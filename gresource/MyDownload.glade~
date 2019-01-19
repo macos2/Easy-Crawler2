@@ -359,7 +359,7 @@
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Backup File</property>
+                <property name="label" translatable="yes">Load Backup File</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -964,5 +964,10 @@
     <property name="can_focus">False</property>
     <property name="resource">/mytask/process-stop.png</property>
     <property name="icon_size">3</property>
+  </object>
+  <object class="GtkImage" id="wait">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="resource">/mytask/image-loading-symbolic.svg</property>
   </object>
 </interface>

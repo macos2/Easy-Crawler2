@@ -11,9 +11,11 @@
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
 #include "../gresource/gresource.h"
+#include "io.h"
 G_BEGIN_DECLS
 typedef enum {
 	MY_DOWNLOAD_DOWNLOADING,
+	MY_DOWNLOAD_WAIT,
 	MY_DOWNLOAD_STOP,
 	MY_DOWNLOAD_FINISH,
 	MY_DOWNLOAD_ERROR,
@@ -37,7 +39,7 @@ typedef struct {
 
 typedef struct{
 	gchar *global_prefix,*global_suffix,*save_local;
-	gboolean u_prefix,u_suffix,u_dir;
+	gboolean u_prefix,u_suffix,u_dir,auto_backup,skip_same_url;
 	same_filename_operation same_op;
 }MyDownloadSetting;
 

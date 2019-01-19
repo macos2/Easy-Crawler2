@@ -51,12 +51,16 @@ static void my_dl_class_init(MyDlClass *klass) {
 }
 static void my_dl_init(MyDl *self) {
 	static uint id=0;
+	gchar *name;
 	MyDlPrivate *priv = my_dl_get_instance_private(self);
 	my_task_rename_id(self,"DownLoader",id++);
 	gtk_widget_init_template(self);
 	if (!WEBKIT_IS_WEB_VIEW(default_view))
 		default_view = webkit_web_view_new();
 	priv->download = my_download_new(default_view, NULL, NULL, NULL);
+	g_object_get(self,MY_TASK_PROP_NAME,&name,NULL);
+	g_object_set(priv->download,"name",name,NULL);
+	g_free(name);
 	gtk_widget_hide(priv->download);
 	g_signal_connect(priv->download, "delete_event", gtk_widget_hide, priv->download);
 	gtk_label_set_text(priv->label,"No Task");
@@ -138,6 +142,8 @@ g_output_stream_write(out,&set->same_op,sizeof(set->same_op),NULL,NULL);
 g_output_stream_write(out,&set->u_dir,sizeof(gboolean),NULL,NULL);
 g_output_stream_write(out,&set->u_prefix,sizeof(gboolean),NULL,NULL);
 g_output_stream_write(out,&set->u_suffix,sizeof(gboolean),NULL,NULL);
+g_output_stream_write(out,&set->auto_backup,sizeof(gboolean),NULL,NULL);
+g_output_stream_write(out,&set->skip_same_url,sizeof(gboolean),NULL,NULL);
 //save in-out addr
 g_output_stream_write(out,&priv->input,sizeof(gpointer),NULL,NULL);
 g_output_stream_write(out,&priv->output,sizeof(gpointer),NULL,NULL);
@@ -156,6 +162,8 @@ void my_dl_load(MyTask *self,GInputStream *in){
 	g_input_stream_read(in,&set->u_dir,sizeof(gboolean),NULL,NULL);
 	g_input_stream_read(in,&set->u_prefix,sizeof(gboolean),NULL,NULL);
 	g_input_stream_read(in,&set->u_suffix,sizeof(gboolean),NULL,NULL);
+	g_input_stream_read(in,&set->auto_backup,sizeof(gboolean),NULL,NULL);
+	g_input_stream_read(in,&set->skip_same_url,sizeof(gboolean),NULL,NULL);
 	my_download_set_setting(priv->download,set);
 	my_download_setting_free(set);
 	g_input_stream_read(in,&pointer,sizeof(gpointer),NULL,NULL);

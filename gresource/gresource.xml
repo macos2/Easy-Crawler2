@@ -33,6 +33,7 @@
 		<file compressed="true">view-refresh-symbolic.symbolic.png</file>
 		<file compressed="true">web-browser-symbolic.svg</file>
 		<file compressed="true">network-transmit-receive-symbolic.svg</file>
+		<file compressed="true">image-loading-symbolic.svg</file>
 	</gresource>
 	<gresource prefix="/myoperater">
 		<file compressed="true">MyOperater.glade</file>

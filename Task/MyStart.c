@@ -31,6 +31,40 @@ void set_clicked_cb(GtkButton *button,MyStart *self){
 	gtk_dialog_run(priv->dialog);
 }
 
+gboolean my_start_web_decide_policy (WebKitWebView *web_view,
+                  WebKitPolicyDecision *decision,
+                  WebKitPolicyDecisionType type)
+{
+	WebKitNavigationPolicyDecision *navigation_decision;
+	WebKitResponsePolicyDecision *response;
+	WebKitURIRequest *uri_request;
+	WebKitNavigationAction *action;
+    switch (type) {
+    case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
+        navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
+        webkit_policy_decision_use(decision);
+        /* Make a policy decision here. */
+        break;
+    case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION:
+        navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
+        action=webkit_navigation_policy_decision_get_navigation_action(navigation_decision);
+        uri_request=webkit_navigation_action_get_request(action);
+        webkit_web_view_load_request(web_view,uri_request);
+        g_print("Redirect to %s\n",webkit_uri_request_get_uri(uri_request));
+        /* Make a policy decision here. */
+        break;
+    case WEBKIT_POLICY_DECISION_TYPE_RESPONSE:
+        response = WEBKIT_RESPONSE_POLICY_DECISION (decision);
+        webkit_policy_decision_use(decision);
+        break;
+        /* Make a policy decision here. */
+    default:
+        webkit_policy_decision_use(decision);
+        /* Making no decision results in webkit_policy_decision_use(). */
+    }
+    return TRUE;
+}
+
 gchar* my_start_run(MyStart *self,TaskMsg *msg){
 	GList *list=NULL;
 	WebKitWebView *view;
@@ -165,6 +199,7 @@ static void my_start_init(MyStart *self) {
 	gtk_window_set_transient_for(priv->dialog, main_window);
 	g_signal_connect(priv->view, "load-changed", web_view_load_changed,
 			self);
+	g_signal_connect(priv->view,"decide-policy",my_start_web_decide_policy,self);
 	start_list=g_list_append(start_list,self);
 	webkit_web_view_load_uri(priv->view,"http://www.baidu.com");
 	my_task_drag_source_set(priv->output);

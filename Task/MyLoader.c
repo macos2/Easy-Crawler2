@@ -140,17 +140,59 @@ void my_loader_web_view_destroy(WebKitWebView *view,MyLoader *self){
 	gtk_container_remove(priv->notebook,view);
 }
 
+gboolean my_loader_web_decide_policy (WebKitWebView *web_view,
+                  WebKitPolicyDecision *decision,
+                  WebKitPolicyDecisionType type)
+{
+	WebKitNavigationPolicyDecision *navigation_decision;
+	WebKitResponsePolicyDecision *response;
+	WebKitURIRequest *uri_request;
+	WebKitNavigationAction *action;
+    switch (type) {
+    case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
+        navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
+        webkit_policy_decision_use(decision);
+        /* Make a policy decision here. */
+        break;
+    case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION:
+        navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
+        action=webkit_navigation_policy_decision_get_navigation_action(navigation_decision);
+        uri_request=webkit_navigation_action_get_request(action);
+        webkit_web_view_load_request(web_view,uri_request);
+        g_print("Redirect to %s\n",webkit_uri_request_get_uri(uri_request));
+        /* Make a policy decision here. */
+        break;
+    case WEBKIT_POLICY_DECISION_TYPE_RESPONSE:
+        response = WEBKIT_RESPONSE_POLICY_DECISION (decision);
+        webkit_policy_decision_use(decision);
+        break;
+        /* Make a policy decision here. */
+    default:
+        webkit_policy_decision_use(decision);
+        /* Making no decision results in webkit_policy_decision_use(). */
+    }
+    return TRUE;
+}
+
+
 typedef struct {
 	gchar *url;
 	MyLoader *loader;
 	guint source_id;
 } MyLoaderRunData;
 
+
+
 void my_loader_view_load_changed(WebKitWebView *web_view,
 		WebKitLoadEvent load_event, MyLoaderRunData *data) {
 	MyTask *next_task;
 	GList *list = NULL;
 	MyLoaderPrivate *priv = my_loader_get_instance_private(data->loader);
+	gchar *name;
+
+	g_object_get(data->loader,MY_TASK_PROP_NAME,&name);
+	g_print("%s\t:Load:%s\n",name,data->url);
+	g_free(name);
 	switch (load_event) {
 	case WEBKIT_LOAD_STARTED:
 		gtk_notebook_set_tab_label_text(priv->notebook, web_view,
@@ -167,7 +209,7 @@ void my_loader_view_load_changed(WebKitWebView *web_view,
 	case WEBKIT_LOAD_FINISHED:
 		gtk_notebook_set_tab_label_text(priv->notebook, web_view,
 				"Load Finish");
-		//g_source_remove(data->source_id);
+		g_source_remove(data->source_id);
 		priv = my_loader_get_instance_private(data->loader);
 		list = g_hash_table_lookup(link_table, priv->output);
 		while (list != NULL) {
@@ -177,6 +219,7 @@ void my_loader_view_load_changed(WebKitWebView *web_view,
 		next_task = my_task_get_next_task(data->loader);
 		if (next_task != NULL)
 			my_task_send_msg(data->loader, next_task, web_view, NULL);
+		g_signal_handlers_disconnect_by_func(web_view,my_loader_view_load_changed,data);
 		g_object_unref(web_view);
 		g_free(data->url);
 		g_free(data);
@@ -221,6 +264,8 @@ gboolean my_loader_thread(MyLoader *loader) {
 		g_signal_connect(view, "load_changed", my_loader_view_load_changed,
 				data);
 		g_signal_connect(view, "destroy", my_loader_web_view_destroy,
+				loader);
+		g_signal_connect(view, "decide-policy", my_loader_web_decide_policy,
 				loader);
 	webkit_web_view_load_uri(view, url);
 	data->url = url;

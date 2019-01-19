@@ -52,10 +52,18 @@ static void my_js_cmd_init(MyJsCmd *self) {
 	my_task_set_right_clicked(priv->output, self);
 }
 
-void my_js_cmd_run(MyJsCmd *task, TaskMsg *msg) {
-	MyJsCmdPrivate *priv = my_js_cmd_get_instance_private(task);
-	webkit_web_view_run_javascript(msg->view, priv->setting->javascript, NULL,
+gboolean my_js_cmd_source (TaskMsg *msg){
+	MyJsCmdPrivate *priv = my_js_cmd_get_instance_private(msg->to_task);
+	if(!webkit_web_view_is_loading(msg->view)){
+		webkit_web_view_run_javascript(msg->view, priv->setting->javascript, NULL,
 			my_js_cmd_run_cb, msg);
+		return G_SOURCE_REMOVE;
+	}
+	return G_SOURCE_CONTINUE;
+}
+
+void my_js_cmd_run(MyJsCmd *task, TaskMsg *msg) {
+	g_idle_add(my_js_cmd_source,msg);//等待网页载入完成。
 	runing_count++;
 }
 ;

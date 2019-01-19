@@ -203,8 +203,8 @@ void my_query_processs_operation(MyQuery *self, TaskMsg *msg) {
 			"var array=new Array();window.document.querySelectorAll('%s').forEach(function(x){",
 			priv->set->selector);
 	while (output_prop != NULL) {
-		p=g_utf8_strchr(gtk_button_get_label(output_prop->data),-1,'-');//检测属性名是否含有符号
-		p==NULL?g_string_append_printf(str, "array.push(x.%s);",gtk_button_get_label(output_prop->data)):
+		/*p=g_utf8_strchr(gtk_button_get_label(output_prop->data),-1,'-');//检测属性名是否含有符号
+		p==NULL?g_string_append_printf(str, "array.push(x.%s);",gtk_button_get_label(output_prop->data)):*/
 		g_string_append_printf(str, "array.push(x.getAttribute('%s'));",gtk_button_get_label(output_prop->data));
 
 		output_prop = output_prop->next;

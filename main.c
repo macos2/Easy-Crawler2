@@ -16,6 +16,7 @@ GetTypeFunc my_type[] = { my_dl_get_type, my_filter_get_type, my_js_cmd_get_type
 		my_loader_get_type, my_query_get_type, my_start_get_type,
 		NULL };
 
+
 void main_init(){
 	gint i=0;
 	GType t;
