@@ -52,8 +52,9 @@ typedef struct _MyDownloadClass{
 };
 MyDownload * my_download_new(WebKitWebView *web_view, gchar *save_dir,gchar *prefix, gchar *suffix);
 void my_download_set(MyDownload *self,gchar *save_dir,gchar *prefix, gchar *suffix);
-WebKitDownload *my_download_add(MyDownload *self ,gchar *url,gchar *prefix,gchar *suffix,gchar *dir);
+void my_download_add(MyDownload *self ,gchar *url,gchar *prefix,gchar *suffix,gchar *dir);
 Download_State *my_download_get_download_state(MyDownload *self,WebKitDownload *download);
+gint my_download_get_downloading_count(MyDownload *self);
 WebKitWebView *my_download_get_web_view(MyDownload *self);
 void my_download_stop_all(MyDownload *self);
 void my_download_start_all(MyDownload *self);
