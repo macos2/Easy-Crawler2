@@ -962,7 +962,6 @@ void webkit_download_finish(WebKitDownload *download, gpointer user_data) {
 			priv->download_store, row_ref, NULL);
 	gtk_tree_row_reference_free(row_ref);
 	gtk_tree_path_free(path);
-	g_object_unref(download);
 	my_download_count_modify(my_download, -1);
 }
 
@@ -1182,6 +1181,43 @@ void my_download_add(MyDownload *self, gchar *url, gchar *prefix,
 	my_download_queue_push(self,url,prefix,suffix,dir,row_ref);
 }
 ;
+
+void my_download_add_webkitdownload(MyDownload *self ,WebKitDownload *download){
+	GtkTreeIter iter;
+	Download_State state;
+	GDateTime *datetime = g_date_time_new_now_local();
+	gchar *time_started_text = g_date_time_format(datetime, "%Y-%m-%d %H:%M:%S");
+	gchar *url=webkit_uri_request_get_uri(webkit_download_get_request(download));
+	MyDownloadPrivate *priv = my_download_get_instance_private(self);
+	gtk_list_store_append(priv->download_store, &iter);
+	GtkTreePath *path = gtk_tree_model_get_path(priv->download_store, &iter);
+	GtkTreeRowReference *row_ref = gtk_tree_row_reference_new(priv->download_store, path);
+	gchar *title=webkit_web_view_get_title(webkit_download_get_web_view(download));
+	g_object_set_data(download,"my_download",self);
+	g_object_set_data(download,"row_ref",row_ref);
+	if (title != NULL)
+		g_object_set_data(download, "s_prefix", g_strdup(title)); //上一级任务特定前续
+		g_object_set_data(download, "s_suffix", g_strdup(title)); //上一级任务特定后续
+		g_object_set_data(download, "s_dir", g_strdup(title)); //上一级任务特定保存目录
+
+	gtk_list_store_set(priv->download_store, &iter, col_name, "",
+					col_progress, 0, col_size, 0, col_size_text, "0 byte",
+					col_speed, 0, col_speed_text, "0 byte/s", col_state_pixfuf, gtk_image_get_pixbuf(priv->downloading),
+					col_time_elapsed, 0, col_time_elapsed_text, "0 s",
+					col_time_start, g_date_time_to_unix(datetime),
+					col_time_started_text, time_started_text, col_url, url,
+					col_state,  MY_DOWNLOAD_WAIT, col_s_prefix, title, col_s_suffix, title, col_s_dir,title, -1);
+	g_signal_connect(download, "decide-destination",
+			webkit_download_decide_destination, NULL);
+	g_signal_connect(download, "created-destination",
+			webkit_download_created_destination, NULL);
+	g_signal_connect(download, "received-data", webkit_download_received_data,
+			NULL);
+	g_signal_connect(download, "failed", webkit_download_fail, NULL);
+	g_signal_connect(download, "finished", webkit_download_finish, NULL);
+	g_free(time_started_text);
+	g_date_time_unref(datetime);
+};
 
 void my_download_set(MyDownload *self, gchar *save_dir, gchar *prefix,
 		gchar *suffix) {

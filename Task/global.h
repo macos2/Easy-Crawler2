@@ -18,6 +18,7 @@ gboolean MAIN_START;
 gint runing_count;
 gint msg_count;
 guint complete_check;
+void *default_view;
 typedef GType (*GetTypeFunc)() ;
 
 

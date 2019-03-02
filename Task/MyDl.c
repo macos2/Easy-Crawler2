@@ -30,6 +30,7 @@ void label_clicked_cb(GtkButton *button, MyDl *self);
 void pause_clicked_cb(GtkButton *button, MyDl *self);
 
 
+
 static void my_dl_class_init(MyDlClass *klass) {
 	GObjectClass *obj_class=klass;
 	MyTaskClass *task_class=klass;

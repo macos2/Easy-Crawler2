@@ -145,12 +145,12 @@ gboolean my_loader_web_decide_policy (WebKitWebView *web_view,
                   WebKitPolicyDecisionType type)
 {
 	WebKitNavigationPolicyDecision *navigation_decision;
-	WebKitResponsePolicyDecision *response;
 	WebKitURIRequest *uri_request;
 	WebKitNavigationAction *action;
+	WebKitURIResponse *uri_respon;
+	gboolean b=TRUE;
     switch (type) {
     case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
-        navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
         webkit_policy_decision_use(decision);
         /* Make a policy decision here. */
         break;
@@ -163,15 +163,19 @@ gboolean my_loader_web_decide_policy (WebKitWebView *web_view,
         /* Make a policy decision here. */
         break;
     case WEBKIT_POLICY_DECISION_TYPE_RESPONSE:
-        response = WEBKIT_RESPONSE_POLICY_DECISION (decision);
-        webkit_policy_decision_use(decision);
-        break;
-        /* Make a policy decision here. */
+    	if(webkit_response_policy_decision_is_mime_type_supported(decision)){
+    		b=FALSE;
+    	}else{
+        	uri_respon=webkit_response_policy_decision_get_response(decision);
+    		webkit_policy_decision_download(decision);
+    	}
+    	break;
     default:
-        webkit_policy_decision_use(decision);
+        b=FALSE;
+        break;
         /* Making no decision results in webkit_policy_decision_use(). */
     }
-    return TRUE;
+    return b;
 }
 
 
@@ -188,11 +192,6 @@ void my_loader_view_load_changed(WebKitWebView *web_view,
 	MyTask *next_task;
 	GList *list = NULL;
 	MyLoaderPrivate *priv = my_loader_get_instance_private(data->loader);
-	gchar *name;
-
-	g_object_get(data->loader,MY_TASK_PROP_NAME,&name);
-	g_print("%s\t:Load:%s\n",name,data->url);
-	g_free(name);
 	switch (load_event) {
 	case WEBKIT_LOAD_STARTED:
 		gtk_notebook_set_tab_label_text(priv->notebook, web_view,
@@ -392,15 +391,17 @@ void my_loader_stop_run(MyLoader *self) {
 		g_free(url);
 		runing_count--;
 	}
-	list = gtk_container_get_children(priv->notebook);
+/*	list = gtk_container_get_children(priv->notebook);
 	l = list;
 	while (l != NULL) {
 		if (WEBKIT_IS_WEB_VIEW(l->data)) {
-			gtk_widget_destroy(l->data);
+			//gtk_widget_destroy(l->data);
+			//g_object_unref(l->data);
+			//webkit_web_view_stop_loading(l->data);
 		}
 		l = l->next;
 	}
-	g_list_free(list);
+	g_list_free(list);*/
 }
 ;
 

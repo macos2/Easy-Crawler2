@@ -10,7 +10,7 @@
 #include <JavaScriptCore/JSBase.h>
 #include "Mainui/MyMainUi.h"
 
-WebKitWebView *default_view;
+
 
 GetTypeFunc my_type[] = { my_dl_get_type, my_filter_get_type, my_js_cmd_get_type,
 		my_loader_get_type, my_query_get_type, my_start_get_type,
@@ -40,7 +40,6 @@ void main_init(){
 
 int main(int argc, char *argv[]) {
 	MyMainUi *mainui;
-
 	gtk_init(&argc, &argv);
 	main_init();
 	mainui = my_main_ui_new();

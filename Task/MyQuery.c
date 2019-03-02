@@ -120,12 +120,15 @@ gboolean my_query_auto_scroll(TaskMsg *msg) {
 	MyQuery *query = msg->to_task;
 	MyQueryPrivate *priv = my_query_get_instance_private(query);
 	GString *str = g_string_new("");
+	if(!G_IS_OBJECT(msg->view)){
+		task_msg_free(msg);
+		return G_SOURCE_REMOVE;
+	}
 	if (priv->set->auto_scroll)
 		webkit_web_view_run_javascript(view,
 				"window.scrollTo(document.body.scrollWidth,document.body.scrollHeight);",
 				NULL,
 				NULL, NULL);
-
 	if (g_object_get_data(view, "checking") == NULL) {
 		g_string_printf(str, "document.querySelectorAll('%s').length",
 				priv->set->selector);
@@ -133,7 +136,6 @@ gboolean my_query_auto_scroll(TaskMsg *msg) {
 				my_query_check_js_callback, msg);
 		g_object_set_data(view, "checking", GINT_TO_POINTER(1));
 	}
-
 	g_string_free(str, TRUE);
 	return G_SOURCE_CONTINUE;
 }

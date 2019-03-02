@@ -18,6 +18,7 @@ typedef struct {
 	GtkMenu *menu;
 	GtkStatusbar *status_bar;
 	GtkButton *run;
+	MyDownload *download;
 } MyMainUiPrivate;
 
 G_DEFINE_TYPE_WITH_CODE(MyMainUi, my_main_ui, GTK_TYPE_WINDOW,
@@ -55,6 +56,9 @@ void my_main_ui_stop(GtkToolButton *button, MyMainUi *self);
 void my_main_ui_menu_new(GtkMenuItem *item, MyMainUi *self);
 void my_main_ui_menu_open(GtkMenuItem *item, MyMainUi *self);
 void my_main_ui_menu_save(GtkMenuItem *item, MyMainUi *self);
+void my_main_ui_menu_download(GtkMenuItem *item, MyMainUi *self);
+void web_context_download_started(WebKitWebContext *context,
+		WebKitDownload *download, MyMainUi *self);
 gboolean
 my_main_ui_layout_draw_cb(GtkWidget *widget, cairo_t *cr, MyMainUi *self);
 
@@ -69,25 +73,29 @@ gboolean layout_motion_notify_event(GtkWidget *widget, GdkEventMotion *event,
 ;
 
 gboolean my_main_ui_status_bar_notify(MyMainUi *self) {
-	gboolean res= G_SOURCE_CONTINUE;
+	gboolean res = G_SOURCE_CONTINUE;
 	gchar status[50];
 	MyMainUiPrivate *priv = my_main_ui_get_instance_private(self);
-	GList *l=task_list;
-	if(runing_count==0 && msg_count==0){complete_check--;}else{complete_check=8;}
-	if(runing_count==0&&msg_count==0&&complete_check==0){
-		MAIN_START=FALSE;
+	GList *l = task_list;
+	if (runing_count == 0 && msg_count == 0) {
+		complete_check--;
+	} else {
+		complete_check = 8;
+	}
+	if (runing_count == 0 && msg_count == 0 && complete_check == 0) {
+		MAIN_START = FALSE;
 		g_sprintf(status, "Ready...");
-		gtk_widget_set_sensitive(priv->run,TRUE);
-		res= G_SOURCE_REMOVE;
-		while(l!=NULL){
+		gtk_widget_set_sensitive(priv->run, TRUE);
+		res = G_SOURCE_REMOVE;
+		while (l != NULL) {
 			my_task_run_finish(l->data);
-			l=l->next;
+			l = l->next;
 		}
-		WebKitWebContext *ctx=webkit_web_context_get_default();
+		WebKitWebContext *ctx = webkit_web_context_get_default();
 		webkit_web_context_clear_cache(ctx);
-	}else{
-	g_sprintf(status, "%s\t| %u Runing %u Message ", MAIN_START ? "START" : "STOP ",
-			runing_count,msg_count);
+	} else {
+		g_sprintf(status, "%s\t| %u Runing %u Message ",
+				MAIN_START ? "START" : "STOP ", runing_count, msg_count);
 	}
 	gtk_statusbar_push(priv->status_bar, 0, status);
 	gtk_widget_queue_draw(priv->layout);
@@ -128,6 +136,7 @@ static void my_main_ui_class_init(MyMainUiClass *klass) {
 	gtk_widget_class_bind_template_callback(klass, my_main_ui_stop);
 	gtk_widget_class_bind_template_callback(klass, my_main_ui_menu_open);
 	gtk_widget_class_bind_template_callback(klass, my_main_ui_menu_save);
+	gtk_widget_class_bind_template_callback(klass, my_main_ui_menu_download);
 	gtk_widget_class_bind_template_callback(klass, my_main_ui_menu_new);
 	gtk_widget_class_bind_template_callback(klass, my_main_ui_layout_draw_cb);
 	gtk_widget_class_bind_template_callback(klass, layout_motion_notify_event);
@@ -148,15 +157,18 @@ static void my_main_ui_class_init(MyMainUiClass *klass) {
 static void my_main_ui_init(MyMainUi *self) {
 	gtk_widget_init_template(self);
 	MyMainUiPrivate *priv = my_main_ui_get_instance_private(self);
-
 	g_signal_connect(self, "delete-event", gtk_main_quit, NULL);
 	gtk_widget_add_events(priv->layout, GDK_ALL_EVENTS_MASK);
-	g_signal_connect(priv->layout, "draw",
-			my_main_ui_layout_draw_cb, self);
+	g_signal_connect(priv->layout, "draw", my_main_ui_layout_draw_cb, self);
 	g_signal_connect(priv->layout, "motion-notify-event",
 			layout_motion_notify_event, self);
 	g_signal_connect(priv->layout, "button-release-event",
 			layout_button_press_event, self);
+
+	priv->download=my_download_new(default_view,NULL,NULL,NULL);
+	g_signal_connect(priv->download,"delete-event",gtk_widget_hide,NULL);
+	WebKitWebContext *ctx =webkit_web_context_get_default();
+	g_signal_connect(ctx,"download-started",web_context_download_started,self);
 }
 
 void my_main_ui_operater_destroy_notify(MyOperater *op, MyMainUi *self) {
@@ -184,46 +196,49 @@ void my_main_ui_run(GtkToolButton *button, MyMainUi *self) {
 	TaskMsg *msg = NULL;
 	MyMainUiPrivate *priv = my_main_ui_get_instance_private(self);
 	MAIN_START = TRUE;
-	l=task_list;
+	l = task_list;
 	while (l != NULL) {
 		my_task_run_init(l->data);
 		l = l->next;
 	}
-	l=start_list;
+	l = start_list;
 	while (l != NULL) {
 		msg = task_msg_new(NULL, NULL, l->data, NULL);
 		my_task_run(l->data, msg);
 		l = l->next;
 	}
-	priv->run=button;
+	priv->run = button;
 	g_timeout_add(250, my_main_ui_status_bar_notify, self);
-	gtk_widget_set_sensitive(button,FALSE);
+	gtk_widget_set_sensitive(button, FALSE);
 }
 ;
 void my_main_ui_stop(GtkToolButton *button, MyMainUi *self) {
-	GList *l=task_list;
+	GList *l = task_list;
 	MAIN_START = FALSE;
-	while(l!=NULL){
+	while (l != NULL) {
 		my_task_stop_run(l->data);
-		l=l->next;
+		l = l->next;
 	}
 }
 ;
 
-void my_main_ui_menu_new(GtkMenuItem *item, MyMainUi *self){
-	GtkDialog *dialog=gtk_message_dialog_new(self,GTK_DIALOG_MODAL,GTK_MESSAGE_INFO,GTK_BUTTONS_YES_NO,"Clear All The Operaters ?",NULL);
-	gint res=gtk_dialog_run(dialog);
+void my_main_ui_menu_new(GtkMenuItem *item, MyMainUi *self) {
+	GtkDialog *dialog = gtk_message_dialog_new(self, GTK_DIALOG_MODAL,
+			GTK_MESSAGE_INFO, GTK_BUTTONS_YES_NO, "Clear All The Operaters ?",
+			NULL);
+	gint res = gtk_dialog_run(dialog);
 	gtk_widget_destroy(dialog);
 	MyOperater *op;
-	if(res==GTK_RESPONSE_YES){
-		while(operater_list!=NULL){
-			op=operater_list->data;
-			operater_list=g_list_remove(operater_list,op);
+	if (res == GTK_RESPONSE_YES) {
+		while (operater_list != NULL) {
+			op = operater_list->data;
+			operater_list = g_list_remove(operater_list, op);
 			gtk_widget_destroy(op);
 		}
 		g_list_free(start_list);
 	}
-};
+}
+;
 
 void my_main_ui_menu_open(GtkMenuItem *item, MyMainUi *self) {
 	GFile *file;
@@ -265,12 +280,12 @@ void my_main_ui_menu_open(GtkMenuItem *item, MyMainUi *self) {
 	read_from_file(in, MY_TYPE_GLIST, &l_task, MY_TYPE_NONE);
 	list = l_task;
 	while (list != NULL) {
-		task_name=read_string(in);
+		task_name = read_string(in);
 		g_input_stream_read(in, &type, sizeof(GType), NULL, NULL);
 		g_print("Task Type:%x\n", type);
 		type = g_hash_table_lookup(load_table, GSIZE_TO_POINTER(type));
 		task = g_object_new(type, NULL);
-		g_object_set(task,MY_TASK_PROP_NAME,task_name,NULL);
+		g_object_set(task, MY_TASK_PROP_NAME, task_name, NULL);
 		my_task_load(task, in);
 		g_hash_table_insert(load_table, list->data, task);
 		list = list->next;
@@ -281,8 +296,8 @@ void my_main_ui_menu_open(GtkMenuItem *item, MyMainUi *self) {
 	read_from_file(in, MY_TYPE_GLIST, &l_operater, MY_TYPE_NONE);
 	list = l_operater;
 	while (list != NULL) {
-		read_from_file(in,MY_TYPE_STRING,&task_name, MY_TYPE_INT, &alloc.x, MY_TYPE_INT, &alloc.y,
-				MY_TYPE_GLIST, &l_child, MY_TYPE_NONE);
+		read_from_file(in, MY_TYPE_STRING, &task_name, MY_TYPE_INT, &alloc.x,
+				MY_TYPE_INT, &alloc.y, MY_TYPE_GLIST, &l_child, MY_TYPE_NONE);
 		op = my_operater_new(task_name);
 		my_main_ui_operater_setting(self, op);
 		gtk_layout_move(priv->layout, op, alloc.x, alloc.y);
@@ -362,8 +377,8 @@ void my_main_ui_menu_save(GtkMenuItem *item, MyMainUi *self) {
 	write_to_file(out, MY_TYPE_GLIST, task_list, MY_TYPE_NONE);
 	list = task_list;
 	while (list != NULL) {
-		g_object_get(list->data,MY_TASK_PROP_NAME,&task_name,NULL);
-		write_string(out,task_name);
+		g_object_get(list->data, MY_TASK_PROP_NAME, &task_name, NULL);
+		write_string(out, task_name);
 		g_free(task_name);
 		my_task_save(list->data, out);
 		list = list->next;
@@ -375,13 +390,14 @@ void my_main_ui_menu_save(GtkMenuItem *item, MyMainUi *self) {
 	while (list != NULL) {
 		gtk_widget_get_allocation(list->data, &alloc);
 		child_list = gtk_container_get_children(list->data);
-		write_to_file(out, MY_TYPE_STRING,my_operater_get_title(list->data),MY_TYPE_INT, &alloc.x, MY_TYPE_INT, &alloc.y,
-				MY_TYPE_GLIST, child_list, MY_TYPE_NONE);
+		write_to_file(out, MY_TYPE_STRING, my_operater_get_title(list->data),
+				MY_TYPE_INT, &alloc.x, MY_TYPE_INT, &alloc.y, MY_TYPE_GLIST,
+				child_list, MY_TYPE_NONE);
 		g_list_free(child_list);
 		list = list->next;
 	}
 	//保存连接表信息
-	if(link_table != NULL) {
+	if (link_table != NULL) {
 		write_to_file(out, MY_TYPE_LINK_TABLE, link_table, MY_TYPE_NONE);
 	}
 	//关闭输出流；
@@ -390,6 +406,21 @@ void my_main_ui_menu_save(GtkMenuItem *item, MyMainUi *self) {
 	g_object_unref(file);
 }
 ;
+
+void my_main_ui_menu_download(GtkMenuItem *item, MyMainUi *self){
+MyMainUiPrivate *priv=my_main_ui_get_instance_private(self);
+gtk_widget_show(priv->download);
+gtk_widget_grab_focus(priv->download);
+};
+
+void web_context_download_started(WebKitWebContext *context,
+		WebKitDownload *download, MyMainUi *self){
+	MyMainUiPrivate *priv=my_main_ui_get_instance_private(self);
+	if(g_object_get_data(download,"my_download")==NULL){
+		my_download_add_webkitdownload(priv->download,download);
+	}
+};
+
 
 gboolean my_main_ui_layout_draw_cb(GtkWidget *widget, cairo_t *cr,
 		MyMainUi *self) {

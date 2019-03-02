@@ -36,12 +36,12 @@ gboolean my_start_web_decide_policy (WebKitWebView *web_view,
                   WebKitPolicyDecisionType type)
 {
 	WebKitNavigationPolicyDecision *navigation_decision;
-	WebKitResponsePolicyDecision *response;
 	WebKitURIRequest *uri_request;
 	WebKitNavigationAction *action;
+	WebKitURIResponse *uri_respon;
+	gboolean b=TRUE;
     switch (type) {
     case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
-        navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
         webkit_policy_decision_use(decision);
         /* Make a policy decision here. */
         break;
@@ -54,15 +54,19 @@ gboolean my_start_web_decide_policy (WebKitWebView *web_view,
         /* Make a policy decision here. */
         break;
     case WEBKIT_POLICY_DECISION_TYPE_RESPONSE:
-        response = WEBKIT_RESPONSE_POLICY_DECISION (decision);
-        webkit_policy_decision_use(decision);
-        break;
-        /* Make a policy decision here. */
+    	if(webkit_response_policy_decision_is_mime_type_supported(decision)){
+    		b=FALSE;
+    	}else{
+        	uri_respon=webkit_response_policy_decision_get_response(decision);
+    		webkit_policy_decision_download(decision);
+    	}
+    	break;
     default:
-        webkit_policy_decision_use(decision);
+        b=FALSE;
+        break;
         /* Making no decision results in webkit_policy_decision_use(). */
     }
-    return TRUE;
+    return b;
 }
 
 gchar* my_start_run(MyStart *self,TaskMsg *msg){

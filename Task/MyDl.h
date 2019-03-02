@@ -14,7 +14,6 @@
 #include "task.h"
 #include "MyDownload.h"
 G_BEGIN_DECLS
-extern WebKitWebView *default_view;
 #define MY_TYPE_DL my_dl_get_type()
 G_DECLARE_DERIVABLE_TYPE(MyDl,my_dl,MY,DL,MyTask);
 static struct _MyDlClass{
