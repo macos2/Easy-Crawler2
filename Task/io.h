@@ -25,6 +25,8 @@ enum{
 	MY_TYPE_NONE,
 }MY_TYPE;
 
+
+
 gchar *read_string(GInputStream *in);
 void write_string(GOutputStream *out,gchar *str);
 void write_to_file(GOutputStream *out,...);//MY_TYPE,data-Pointer ...,MY_TYPE_NONE for end

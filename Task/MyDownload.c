@@ -16,20 +16,18 @@ typedef struct {
 	GtkMenu *menu;
 	GtkDialog *rename_dialog, *add_dialog, *set_dialog;
 	GtkTextBuffer *add_uri_buffer;
-	GtkEntry *rename_entry, *prefix_entry, *suffix_entry;
+	GtkEntry *rename_entry, *prefix_entry, *suffix_entry,*name_format;
 	GtkFileChooserButton *save_location,*add_from_backup_file;
 	gchar *perfix, *suffix, *save_dir;
 	guint same_filename_operation,max_count/*最大同时下载的任务数量*/,add_count;//用于生成唯一任务id;
 	GtkRadioButton *over_write, *skip_download, *rename_suffix_number;
-	GtkCheckButton *upper_task_prefix, *upper_task_suffix, *upper_task_savedir,*skip_same_url,*auto_backup;
+	GtkCheckButton *skip_same_url,*auto_backup,*special_name_format;
 	GString *downloaded_url;
 	GAsyncQueue *download_queue;
 } MyDownloadPrivate;
 
 typedef struct {
 	gchar *url;
-	gchar *prefix;
-	gchar *suffix;
 	gchar *dir;
 	GtkTreeRowReference *ref;
 }DownloadQueueData;
@@ -54,9 +52,7 @@ enum column {
 	col_state,
 	col_webkitdownload,
 	col_path,
-	col_s_prefix,
-	col_s_suffix,
-	col_s_dir
+	col_s_title
 };
 
 static gchar *size_unit[] = { "Byte", "KB", "MB", "GB", "TB" };
@@ -95,10 +91,10 @@ void webkit_download_fail(WebKitDownload *download, GError *error,
 		gpointer user_data);
 void webkit_download_received_data(WebKitDownload *download,
 		guint64 data_length, gpointer user_data);
-DownloadQueueData *my_download_queue_data_new(gchar *url,gchar *prefix,gchar *suffix,gchar *dir,GtkTreeRowReference *ref);
+DownloadQueueData *my_download_queue_data_new(gchar *url,gchar *dir,GtkTreeRowReference *ref);
 void my_download_queue_data_free(DownloadQueueData *data);
 void my_download_queue_pop(MyDownload *self);
-void my_download_queue_push(MyDownload *self,gchar *url,gchar *prefix,gchar *suffix,gchar *dir,GtkTreeRowReference *ref);
+void my_download_queue_push(MyDownload *self,gchar *url,gchar *dir,GtkTreeRowReference *ref);
 
 static void my_download_class_init(MyDownloadClass *klass) {
 	GObjectClass *obj_class = klass;
@@ -151,11 +147,9 @@ static void my_download_class_init(MyDownloadClass *klass) {
 	gtk_widget_class_bind_template_child_private(gtk_class, MyDownload,
 			rename_suffix_number);
 	gtk_widget_class_bind_template_child_private(gtk_class, MyDownload,
-			upper_task_prefix);
+			name_format);
 	gtk_widget_class_bind_template_child_private(gtk_class, MyDownload,
-			upper_task_suffix);
-	gtk_widget_class_bind_template_child_private(gtk_class, MyDownload,
-			upper_task_savedir);
+			special_name_format);
 	gtk_widget_class_bind_template_child_private(gtk_class, MyDownload,
 			skip_same_url);
 	gtk_widget_class_bind_template_child_private(gtk_class, MyDownload,
@@ -185,6 +179,12 @@ static void my_download_class_init(MyDownloadClass *klass) {
 			G_STRUCT_OFFSET(MyDownloadClass, download_finish), NULL, NULL, NULL,
 			G_TYPE_NONE, 3, WEBKIT_TYPE_DOWNLOAD, GTK_TYPE_LIST_STORE,
 			GTK_TYPE_TREE_ROW_REFERENCE, NULL);
+	if (uri_regex==NULL)uri_regex=g_regex_new("%u",0,0,NULL);
+	if (ori_regex==NULL)ori_regex=g_regex_new("%f",0,0,NULL);
+	if (title_regex==NULL)title_regex=g_regex_new("%w",0,0,NULL);
+	if (date_regex==NULL)date_regex=g_regex_new("%d",0,0,NULL);
+	if (time_regex==NULL)time_regex=g_regex_new("%t",0,0,NULL);
+
 }
 static void my_download_init(MyDownload *self) {
 	gtk_widget_init_template(self);
@@ -202,6 +202,7 @@ static void my_download_init(MyDownload *self) {
 	gtk_toggle_button_set_active(priv->rename_suffix_number, TRUE);
 	gtk_toggle_button_set_active(priv->skip_same_url, TRUE);
 	gtk_toggle_button_set_active(priv->auto_backup, TRUE);
+	gtk_toggle_button_set_active(priv->special_name_format,FALSE);
 	g_mutex_init(&priv->store_mutex);
 }
 
@@ -407,8 +408,7 @@ void menu_continue(GtkMenuItem *menuitem, MyDownload *MyDownload) {
 	GValue value = G_VALUE_INIT;
 	WebKitDownload *download;
 	GtkTreeRowReference *row_ref;
-	gchar *s_prefix,
-	*s_suffix, *s_dir,*url;
+	gchar *s_dir,*url;
 	GdkPixbuf *pixbuf;
 	while (selec_list != NULL) {
 		path = selec_list->data;
@@ -427,12 +427,9 @@ void menu_continue(GtkMenuItem *menuitem, MyDownload *MyDownload) {
 							path);
 					g_mutex_unlock(&priv->store_mutex);
 					gtk_tree_model_get(priv->download_store,&iter,
-							col_url,&url,col_s_prefix,&s_prefix,
-							col_s_suffix,&s_suffix,col_s_dir,&s_dir,-1);
-					my_download_queue_push(MyDownload,url,s_prefix,s_suffix,s_dir,row_ref);
+							col_url,&url,col_path,&s_dir,-1);
+					my_download_queue_push(MyDownload,url,s_dir,row_ref);
 					g_free(s_dir);
-					g_free(s_prefix);
-					g_free(s_suffix);
 					g_free(url);
 				}
 			} ;
@@ -650,7 +647,7 @@ gchar * remove_new_line_char(gchar *str) {
 
 void my_download_add_button_clicked(GtkToolButton *toolbutton,
 		MyDownload *MyDownload) {
-	gchar *text, *temp,*prefix=NULL,*suffix=NULL,*url=NULL,*save_dir=NULL;
+	gchar *text, *temp,*url=NULL,*save_dir=NULL;
 	GtkTextIter start, end;
 	GFile *file,*backup_file;
 	GInputStream *in;
@@ -667,7 +664,7 @@ void my_download_add_button_clicked(GtkToolButton *toolbutton,
 			temp = gtk_text_buffer_get_text(priv->add_uri_buffer, &start, &end,
 			FALSE);
 			text = remove_new_line_char(temp);
-			my_download_add(MyDownload, text, NULL, NULL, NULL);
+			my_download_add(MyDownload, text, NULL);
 			gtk_text_iter_forward_line(&start);
 			g_free(temp);
 			g_free(text);
@@ -676,7 +673,7 @@ void my_download_add_button_clicked(GtkToolButton *toolbutton,
 		temp = gtk_text_buffer_get_text(priv->add_uri_buffer, &start, &end,
 		TRUE);
 		text = remove_new_line_char(temp);
-		my_download_add(MyDownload, text, NULL, NULL, NULL);
+		my_download_add(MyDownload, text, NULL);
 		gtk_text_iter_forward_line(&start);
 		g_free(temp);
 		g_free(text);
@@ -692,15 +689,11 @@ void my_download_add_button_clicked(GtkToolButton *toolbutton,
 			add_count=0;
 			do{
 			pre_count=add_count;
-			g_free(prefix);
-			g_free(suffix);
 			g_free(url);
 			g_free(save_dir);
-			read_from_file(in,MY_TYPE_STRING,&prefix,MY_TYPE_STRING,&suffix,MY_TYPE_STRING,&url,MY_TYPE_STRING,&save_dir,MY_TYPE_UINT,&add_count,MY_TYPE_NONE);
-			my_download_add(MyDownload,url,prefix,suffix,save_dir);
+			read_from_file(in,MY_TYPE_STRING,&url,MY_TYPE_STRING,&save_dir,MY_TYPE_UINT,&add_count,MY_TYPE_NONE);
+			my_download_add(MyDownload,url,save_dir);
 			}while(add_count>pre_count);
-			g_free(prefix);
-			g_free(suffix);
 			g_free(url);
 			g_free(save_dir);
 		}
@@ -789,11 +782,58 @@ MyDownload * my_download_new(WebKitWebView *web_view, gchar *save_dir,
 	return self;
 }
 
+
+gchar *webkit_download_name_fmt(const gchar *fmt,const gchar *ori_name,const gchar *uri,const gchar *title){
+	gboolean u=FALSE,w=FALSE,f=FALSE,t=FALSE,d=FALSE;
+	gchar *name=g_strdup(fmt),*temp,*time,*date;
+	GDateTime *date_time;
+	if (g_strstr_len(fmt, -1, "%f") != NULL)
+		f = TRUE;
+	if (g_strstr_len(fmt, -1, "%u") != NULL)
+		u = TRUE;
+	if (g_strstr_len(fmt, -1, "%w") != NULL)
+		w = TRUE;
+	if (g_strstr_len(fmt, -1, "%t") != NULL)
+		t = TRUE;
+	if (g_strstr_len(fmt, -1, "%d") != NULL)
+		d = TRUE;
+
+	if(f){
+		temp=g_regex_replace(ori_regex,name,-1,0,ori_name,0,NULL);
+		g_free(name);
+		name=temp;
+	}
+	if(u){
+		temp=g_regex_replace(uri_regex,name,-1,0,uri,0,NULL);
+		g_free(name);
+		name=temp;
+	}
+	if(w){
+		temp=g_regex_replace(title_regex,name,-1,0,title,0,NULL);
+		g_free(name);
+		name=temp;
+	}
+	if(t||d){
+		date_time=g_date_time_new_now_local();
+		date=g_date_time_format(date_time,"%Y-%m-%d");
+		time=g_date_time_format(date_time,"%H:%M:%S");
+		g_date_time_unref(date_time);
+		temp=g_regex_replace(date_regex,name,-1,0,date,0,NULL);
+		g_free(name);
+		name=g_regex_replace(time_regex,temp,-1,0,time,0,NULL);
+		g_free(temp);
+		g_free(date);
+		g_free(time);
+	}
+	return name;
+}
+
+
 gboolean webkit_download_decide_destination(WebKitDownload *download,
 		gchar *suggested_filename, gpointer user_data) {
-	guint i = 0;
+	guint i = 0,suffix_num = 0;;
 	GFile *file;
-	gchar *name, **name_v;
+	gchar *name, **name_v,*path;
 	GString *str;
 	gboolean download_stop = FALSE;
 	if (g_strcmp0(suggested_filename, "")
@@ -825,36 +865,20 @@ gboolean webkit_download_decide_destination(WebKitDownload *download,
 	MyDownloadPrivate *priv = my_download_get_instance_private(my_download);
 
 //重定义文件名
-	gchar *s_prefix = NULL;
-	gchar *s_suffix = NULL;
 	gchar *s_dir = NULL;
-	if (gtk_toggle_button_get_active(priv->upper_task_prefix))
-		s_prefix = g_object_get_data(download, "s_prefix");
-	if (gtk_toggle_button_get_active(priv->upper_task_suffix))
-		s_suffix = g_object_get_data(download, "s_suffix");
-	if (gtk_toggle_button_get_active(priv->upper_task_savedir))
-		s_dir = g_object_get_data(download, "s_dir");
-	if (s_prefix == NULL)
-		s_prefix = g_strdup("");
-	if (s_suffix == NULL)
-		s_suffix = g_strdup("");
-	guint suffix_num = 0;
-	str = g_string_new("");
-	g_string_append(str, priv->perfix);
-	g_string_append(str, s_prefix);
-	g_string_append(str, name);
-	g_free(name);
+	gchar *s_title=NULL;
+	gchar *name_format=NULL;
+	gchar *uri=webkit_uri_response_get_uri(webkit_download_get_response(download));
+	s_dir = g_object_get_data(download, "path");
+	s_title=g_object_get_data(download,"s_title");
+	if(s_title==NULL)s_title=g_strdup("");
+	name_format=g_object_get_data(download,"name_format");
+	if(name_format==NULL)name_format=g_strdup("%f");
+	gchar *fmt_name=webkit_download_name_fmt(name_format,name,uri,s_title);
 
-	gchar *new_name;
-	if (s_dir == NULL) {
-		new_name = g_strdup_printf("%s%c%s%s%s", priv->save_dir,
-		G_DIR_SEPARATOR, str->str, s_suffix, priv->suffix);
-	} else {
-		new_name = g_strdup_printf("%s%c%s%c%s%s%s", priv->save_dir,
-		G_DIR_SEPARATOR, s_dir, G_DIR_SEPARATOR, str->str, s_suffix,
-				priv->suffix);
-	}
-	if (g_access(new_name, 00) == 0) {
+	gchar *file_name=g_strdup_printf("%s%c%s",s_dir,G_DIR_SEPARATOR,fmt_name);
+
+	if (g_access(file_name, 00) == 0) {
 		//有同名文件存在，选择处理方法
 		switch (priv->same_filename_operation) {
 		case same_filename_over_write: //覆盖同名文件
@@ -866,35 +890,26 @@ gboolean webkit_download_decide_destination(WebKitDownload *download,
 			break;
 		default: //更名，名字添加后续数字
 			do {
-				g_free(new_name);
-
-				if (s_dir == NULL) {
-					new_name = g_strdup_printf("%s%c%s%s%s.%.2u",
-							priv->save_dir,
-							G_DIR_SEPARATOR, str->str, s_suffix, priv->suffix,
-							suffix_num);
-				} else {
-					new_name = g_strdup_printf("%s%c%s%c%s%s%s.%.2u",
-							priv->save_dir,
-							G_DIR_SEPARATOR, s_dir, G_DIR_SEPARATOR, str->str,
-							s_suffix, priv->suffix, suffix_num);
-				}
+				g_free(file_name);
+				file_name =g_strdup_printf("%s%c%s.%.2u",s_dir,G_DIR_SEPARATOR,fmt_name,suffix_num);
 				suffix_num++;
-			} while (g_access(new_name, 00) == 0);
+			} while (g_access(file_name, 00) == 0);
 			break;
 		};
 	};
-	g_string_free(str, TRUE);
-
+	g_free(fmt_name);
+	g_free(s_dir);
+	g_free(s_title);
+	g_free(name_format);
 //检测下载目录是否存在
-	file = g_file_new_for_path(new_name);
+	file = g_file_new_for_path(file_name);
 	GFile *dir = g_file_get_parent(file);
-	g_free(new_name);
-	new_name = g_file_get_path(dir); //new_name临时储存保存路径字符串
+	g_free(file_name);
+	path = g_file_get_path(dir); //new_name临时储存保存路径字符串
 	if (g_file_query_exists(dir, NULL) == FALSE)
-		g_mkdir_with_parents(new_name, 0777);
+		g_mkdir_with_parents(path, 0777);
 	g_object_unref(dir);
-	g_free(new_name);
+	g_free(path);
 //以新的下载文件名重定Webkit下载路径
 	name = g_file_get_uri(file);
 	webkit_download_set_destination(download, name);
@@ -902,18 +917,16 @@ gboolean webkit_download_decide_destination(WebKitDownload *download,
 //把下载信息添加至列表
 	name = g_file_get_basename(file);
 	g_mutex_lock(&priv->store_mutex);
-	GtkTreePath *path = gtk_tree_row_reference_get_path(row_ref);
+	GtkTreePath *tree_path = gtk_tree_row_reference_get_path(row_ref);
 	GtkTreeIter iter;
-	if (gtk_tree_model_get_iter(priv->download_store, &iter, path)) {
+	if (gtk_tree_model_get_iter(priv->download_store, &iter, tree_path)) {
 		gtk_list_store_set(priv->download_store, &iter, col_name, name, -1);
 	}
 	g_free(name);
-	g_free(s_prefix);
-	g_free(s_suffix);
 	if (s_dir != NULL)
 		g_free(s_dir);
 	g_object_unref(file);
-	gtk_tree_path_free(path);
+	gtk_tree_path_free(tree_path);
 	g_mutex_unlock(&priv->store_mutex);
 	return download_stop;
 }
@@ -1045,27 +1058,23 @@ void webkit_download_received_data(WebKitDownload *download,
 	g_free(elapsed_time_text);
 }
 
-DownloadQueueData *my_download_queue_data_new(gchar *url,gchar *prefix,gchar *suffix,gchar *dir,GtkTreeRowReference *ref){
+DownloadQueueData *my_download_queue_data_new(gchar *url,gchar *dir,GtkTreeRowReference *ref){
 	DownloadQueueData *data=g_malloc0(sizeof(DownloadQueueData));
 	data->dir=g_strdup(dir);
-	data->prefix=g_strdup(prefix);
 	data->ref=ref;
-	data->suffix=g_strdup(suffix);
 	data->url=g_strdup(url);
 	return data;
 };
 void my_download_queue_data_free(DownloadQueueData *data){
 	g_free(data->dir);
-	g_free(data->prefix);
 	//if(data->ref!=NULL)gtk_tree_row_reference_free(data->ref);
-	g_free(data->suffix);
 	g_free(data->url);
 
 };
 
-void my_download_queue_push(MyDownload *self,gchar *url,gchar *prefix,gchar *suffix,gchar *dir,GtkTreeRowReference *ref){
+void my_download_queue_push(MyDownload *self,gchar *url,gchar *dir,GtkTreeRowReference *ref){
 	MyDownloadPrivate *priv = my_download_get_instance_private(self);
-	DownloadQueueData *data=my_download_queue_data_new(url,prefix,suffix,dir,ref);
+	DownloadQueueData *data=my_download_queue_data_new(url,dir,ref);
 	g_async_queue_push(priv->download_queue,data);
 	while(priv->count<priv->max_count&&g_async_queue_length(priv->download_queue)>0){
 		my_download_queue_pop(self);
@@ -1088,13 +1097,11 @@ void my_download_queue_pop(MyDownload *self){
 
 	g_object_set_data(download, "row_ref", data->ref);
 	g_object_set_data(download, "my_download", self);
-	if (data->prefix != NULL)
-		g_object_set_data(download, "s_prefix", g_strdup(data->prefix)); //上一级任务特定前续
-	if (data->suffix != NULL)
-		g_object_set_data(download, "s_suffix", g_strdup(data->suffix)); //上一级任务特定后续
 	if (data->dir != NULL)
-		g_object_set_data(download, "s_dir", g_strdup(data->dir)); //上一级任务特定保存目录
-
+		g_object_set_data(download, "path", g_strdup(data->dir));
+	else
+		g_object_set_data(download, "path", g_strdup(priv->save_dir));
+	//上一级任务特定保存目录
 	g_signal_connect(download, "decide-destination",
 			webkit_download_decide_destination, NULL);
 	g_signal_connect(download, "created-destination",
@@ -1108,8 +1115,7 @@ void my_download_queue_pop(MyDownload *self){
 	my_download_queue_data_free(data);
 };
 
-void my_download_add(MyDownload *self, gchar *url, gchar *prefix,
-		gchar *suffix, gchar *dir) {
+void my_download_add(MyDownload *self, gchar *url, gchar *dir) {
 	MyDownloadPrivate *priv = my_download_get_instance_private(self);
 	GtkTreeIter iter;
 	GtkTreePath *path;
@@ -1139,7 +1145,7 @@ void my_download_add(MyDownload *self, gchar *url, gchar *prefix,
 		out=g_file_create(bufile,G_FILE_CREATE_REPLACE_DESTINATION,NULL,NULL);
 		}
 		if(out!=NULL){
-			write_to_file(out,MY_TYPE_STRING,prefix,MY_TYPE_STRING,suffix,MY_TYPE_STRING,url,MY_TYPE_STRING,dir,MY_TYPE_UINT,&priv->add_count,MY_TYPE_NONE);
+			write_to_file(out,MY_TYPE_STRING,url,MY_TYPE_STRING,dir,MY_TYPE_UINT,&priv->add_count,MY_TYPE_NONE);
 			priv->add_count++;
 		}
 		g_output_stream_close(out,NULL,NULL);
@@ -1165,7 +1171,7 @@ void my_download_add(MyDownload *self, gchar *url, gchar *prefix,
 				col_time_elapsed, 0, col_time_elapsed_text, time_elapsed_text,
 				col_time_start, g_date_time_to_unix(datetime),
 				col_time_started_text, time_started_text, col_url, url,
-				col_state,  MY_DOWNLOAD_WAIT, col_s_prefix, prefix, col_s_suffix, suffix, col_s_dir, dir, -1);
+				col_state,  MY_DOWNLOAD_WAIT, col_path, dir, -1);
 	} else {
 		g_printerr("Iter is invalid!!\n");
 	}
@@ -1178,7 +1184,7 @@ void my_download_add(MyDownload *self, gchar *url, gchar *prefix,
 	row_ref = gtk_tree_row_reference_new(priv->download_store, path);
 	gtk_tree_path_free(path);
 	g_mutex_unlock(&priv->store_mutex);
-	my_download_queue_push(self,url,prefix,suffix,dir,row_ref);
+	my_download_queue_push(self,url,dir,row_ref);
 }
 ;
 
@@ -1196,17 +1202,15 @@ void my_download_add_webkitdownload(MyDownload *self ,WebKitDownload *download){
 	g_object_set_data(download,"my_download",self);
 	g_object_set_data(download,"row_ref",row_ref);
 	if (title != NULL)
-		g_object_set_data(download, "s_prefix", g_strdup(title)); //上一级任务特定前续
-		g_object_set_data(download, "s_suffix", g_strdup(title)); //上一级任务特定后续
-		g_object_set_data(download, "s_dir", g_strdup(title)); //上一级任务特定保存目录
-
+		g_object_set_data(download, "s_title", g_strdup(title)); //上一级任务特定前续
+	g_object_set_data(download,"name_format",g_strdup(gtk_entry_get_text(priv->name_format)));
 	gtk_list_store_set(priv->download_store, &iter, col_name, "",
 					col_progress, 0, col_size, 0, col_size_text, "0 byte",
 					col_speed, 0, col_speed_text, "0 byte/s", col_state_pixfuf, gtk_image_get_pixbuf(priv->downloading),
 					col_time_elapsed, 0, col_time_elapsed_text, "0 s",
 					col_time_start, g_date_time_to_unix(datetime),
 					col_time_started_text, time_started_text, col_url, url,
-					col_state,  MY_DOWNLOAD_WAIT, col_s_prefix, title, col_s_suffix, title, col_s_dir,title, -1);
+					col_state,  MY_DOWNLOAD_WAIT, col_s_title,title, -1);
 	g_signal_connect(download, "decide-destination",
 			webkit_download_decide_destination, NULL);
 	g_signal_connect(download, "created-destination",
@@ -1317,11 +1321,10 @@ MyDownloadSetting *my_download_get_setting(MyDownload *self){
 	set->global_suffix=g_strdup(priv->suffix);
 	set->same_op=priv->same_filename_operation;
 	set->save_local=g_strdup(priv->save_dir);
-	set->u_prefix=gtk_toggle_button_get_active(priv->upper_task_prefix);
-	set->u_suffix=gtk_toggle_button_get_active(priv->upper_task_suffix);
-	set->u_dir=gtk_toggle_button_get_active(priv->upper_task_savedir);
+	set->u_special_name_format=gtk_toggle_button_get_active(priv->special_name_format);
 	set->auto_backup=gtk_toggle_button_get_active(priv->auto_backup);
 	set->skip_same_url=gtk_toggle_button_get_active(priv->skip_same_url);
+	set->name_format=g_strdup(gtk_entry_get_text(priv->name_format));
 	return set;
 };
 
@@ -1334,9 +1337,8 @@ void my_download_set_setting(MyDownload *self,MyDownloadSetting *set){
 	priv->suffix=g_strdup(set->global_suffix);
 	priv->save_dir=g_strdup(set->save_local);
 	priv->same_filename_operation=set->same_op;
-	gtk_toggle_button_set_active(priv->upper_task_prefix,set->u_prefix);
-	gtk_toggle_button_set_active(priv->upper_task_suffix,set->u_suffix);
-	gtk_toggle_button_set_active(priv->upper_task_savedir,set->u_dir);
+	gtk_entry_set_text(priv->name_format,set->name_format);
+	gtk_toggle_button_set_active(priv->special_name_format,set->u_special_name_format);
 	gtk_toggle_button_set_active(priv->auto_backup,set->auto_backup);
 	gtk_toggle_button_set_active(priv->skip_same_url,set->skip_same_url);
 };
@@ -1345,5 +1347,6 @@ void my_download_setting_free(MyDownloadSetting *set){
 	g_free(set->global_prefix);
 	g_free(set->global_suffix);
 	g_free(set->save_local);
+	g_free(set->name_format);
 	g_free(set);
 };

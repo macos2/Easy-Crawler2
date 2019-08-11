@@ -110,7 +110,7 @@ while(url[i]!=NULL){
 		continue;
 	}
 	s_uri=soup_uri_new_with_base(b_uri,url[i]);
-	my_download_add(priv->download,soup_uri_to_string(s_uri,FALSE),string->str,string->str,string->str);
+	my_download_add(priv->download,soup_uri_to_string(s_uri,FALSE),string->str);
 	my_task_log(self,"%s</br>",url[i]);
 	i++;
 	soup_uri_free(s_uri);
@@ -139,10 +139,11 @@ g_output_stream_write(out,&t,sizeof(GType),NULL,NULL);
 write_string(out,set->global_prefix);
 write_string(out,set->global_suffix);
 write_string(out,set->save_local);
+write_string(out,set->name_format);
 g_output_stream_write(out,&set->same_op,sizeof(set->same_op),NULL,NULL);
-g_output_stream_write(out,&set->u_dir,sizeof(gboolean),NULL,NULL);
-g_output_stream_write(out,&set->u_prefix,sizeof(gboolean),NULL,NULL);
-g_output_stream_write(out,&set->u_suffix,sizeof(gboolean),NULL,NULL);
+
+g_output_stream_write(out,&set->u_special_name_format,sizeof(gboolean),NULL,NULL);
+
 g_output_stream_write(out,&set->auto_backup,sizeof(gboolean),NULL,NULL);
 g_output_stream_write(out,&set->skip_same_url,sizeof(gboolean),NULL,NULL);
 //save in-out addr
@@ -159,10 +160,11 @@ void my_dl_load(MyTask *self,GInputStream *in){
 	set->global_prefix=read_string(in);
 	set->global_suffix=read_string(in);
 	set->save_local=read_string(in);
+	set->name_format=read_string(in);
 	g_input_stream_read(in,&set->same_op,sizeof(set->same_op),NULL,NULL);
-	g_input_stream_read(in,&set->u_dir,sizeof(gboolean),NULL,NULL);
-	g_input_stream_read(in,&set->u_prefix,sizeof(gboolean),NULL,NULL);
-	g_input_stream_read(in,&set->u_suffix,sizeof(gboolean),NULL,NULL);
+
+	g_input_stream_read(in,&set->u_special_name_format,sizeof(gboolean),NULL,NULL);
+
 	g_input_stream_read(in,&set->auto_backup,sizeof(gboolean),NULL,NULL);
 	g_input_stream_read(in,&set->skip_same_url,sizeof(gboolean),NULL,NULL);
 	my_download_set_setting(priv->download,set);

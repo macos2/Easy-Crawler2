@@ -38,8 +38,8 @@ typedef struct {
 }Download_State;
 
 typedef struct{
-	gchar *global_prefix,*global_suffix,*save_local;
-	gboolean u_prefix,u_suffix,u_dir,auto_backup,skip_same_url;
+	gchar *global_prefix,*global_suffix,*save_local,*name_format;
+	gboolean u_special_name_format,auto_backup,skip_same_url;
 	same_filename_operation same_op;
 }MyDownloadSetting;
 
@@ -50,9 +50,12 @@ typedef struct _MyDownloadClass{
 	void (*download_finish)(MyDownload *self,WebKitDownload *download,GtkListStore *download_store,GtkTreeRowReference *row_ref);
 	void (*download_start)(MyDownload *self,WebKitDownload *download,GtkListStore *download_store,GtkTreeRowReference *row_ref);
 };
+
+static GRegex *uri_regex=NULL,*ori_regex=NULL,*title_regex=NULL,*date_regex=NULL,*time_regex=NULL;
+
 MyDownload * my_download_new(WebKitWebView *web_view, gchar *save_dir,gchar *prefix, gchar *suffix);
 void my_download_set(MyDownload *self,gchar *save_dir,gchar *prefix, gchar *suffix);
-void my_download_add(MyDownload *self ,gchar *url,gchar *prefix,gchar *suffix,gchar *dir);
+void my_download_add(MyDownload *self ,gchar *url,gchar *dir);
 void my_download_add_webkitdownload(MyDownload *self ,WebKitDownload *download);
 Download_State *my_download_get_download_state(MyDownload *self,WebKitDownload *download);
 gint my_download_get_downloading_count(MyDownload *self);

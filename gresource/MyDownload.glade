@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.0 -->
+<!-- Generated with glade 3.22.1 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
   <object class="GtkTextBuffer" id="add_uri_buffer"/>
@@ -35,11 +35,7 @@
       <column type="gpointer"/>
       <!-- column-name path -->
       <column type="gchararray"/>
-      <!-- column-name s_prefix -->
-      <column type="gchararray"/>
-      <!-- column-name s_suffix -->
-      <column type="gchararray"/>
-      <!-- column-name s_dir -->
+      <!-- column-name s_title -->
       <column type="gchararray"/>
     </columns>
   </object>
@@ -47,6 +43,9 @@
     <property name="width_request">400</property>
     <property name="height_request">300</property>
     <property name="can_focus">False</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
     <child>
       <object class="GtkBox">
         <property name="visible">True</property>
@@ -248,9 +247,6 @@
         </child>
       </object>
     </child>
-    <child type="titlebar">
-      <placeholder/>
-    </child>
   </template>
   <object class="GtkDialog" id="add_dialog">
     <property name="width_request">400</property>
@@ -263,6 +259,9 @@
     <property name="skip_pager_hint">True</property>
     <property name="deletable">False</property>
     <property name="transient_for">MyDownload</property>
+    <child>
+      <placeholder/>
+    </child>
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
@@ -401,6 +400,9 @@
     <property name="skip_pager_hint">True</property>
     <property name="deletable">False</property>
     <property name="transient_for">MyDownload</property>
+    <child>
+      <placeholder/>
+    </child>
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
@@ -480,6 +482,9 @@
     <property name="skip_pager_hint">True</property>
     <property name="deletable">False</property>
     <property name="transient_for">MyDownload</property>
+    <child>
+      <placeholder/>
+    </child>
     <child internal-child="vbox">
       <object class="GtkBox">
         <property name="can_focus">False</property>
@@ -747,28 +752,15 @@
                       <object class="GtkBox">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="margin_left">2</property>
+                        <property name="margin_right">2</property>
+                        <property name="margin_top">2</property>
+                        <property name="margin_bottom">2</property>
                         <property name="orientation">vertical</property>
                         <child>
-                          <object class="GtkCheckButton" id="upper_task_prefix">
-                            <property name="label" translatable="yes">Special Prefix By Website Title</property>
+                          <object class="GtkEntry" id="name_format">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
-                            <property name="receives_default">False</property>
-                            <property name="draw_indicator">True</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkCheckButton" id="upper_task_suffix">
-                            <property name="label" translatable="yes">Special Suffix By Website Title</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">False</property>
-                            <property name="draw_indicator">True</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -776,29 +768,17 @@
                             <property name="position">1</property>
                           </packing>
                         </child>
-                        <child>
-                          <object class="GtkCheckButton" id="upper_task_savedir">
-                            <property name="label" translatable="yes">Special Save Directory Sort By Website Title</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">False</property>
-                            <property name="draw_indicator">True</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">2</property>
-                          </packing>
-                        </child>
                       </object>
                     </child>
                   </object>
                 </child>
                 <child type="label">
-                  <object class="GtkLabel">
+                  <object class="GtkCheckButton" id="special_name_format">
+                    <property name="label" translatable="yes">Special Name Format</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Single Task Options</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="draw_indicator">True</property>
                   </object>
                 </child>
               </object>
