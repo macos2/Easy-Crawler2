@@ -10,11 +10,11 @@ It still unstable yet, under development and fix bug.
 Depend
 ------
 `gtk+-3.0` `webkit2gtk-4.0`
-and make sure your pkg-config work correctly.
+and make sure your pkg-config, meson and ninja work correctly.
 
 Build
 -----
-To Build the programme ,go into the `Release` dir, and run `make`to build the source code. the programme named `webkitgtk_test2` will maked for you.
+Open the terminal,go into the source dir,type `meson build` to make a `build` dir and go into it type 'ninja' . the programme named `easy-crawler2` will maked for you.
 
 Use
 -----
