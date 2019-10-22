@@ -1,0 +1,6 @@
+project('Easy-Crawler2','c')
+gnome=import('gnome')
+gsrc=gnome.compile_resources('gresource','gresource/gresource.xml',source_dir:['gresource'])
+gtk_dep=dependency('gtk+-3.0')
+webkitgtk_dep=dependency('webkit2gtk-4.0')
+executable('easy-crawler2',['./Task/MyDownload.c','./Task/io.c','./Task/MyStart.c','./Task/MyStartSetDialog.c','./Task/task.c','./Task/MyDl.c','./Task/MyQuerySetDialog.c','./Task/MyFilterSetDialog.c','./Task/msg.c','./Task/MyJsCmd.c','./Task/MyLoaderSetDialog.c','./Task/MyFilter.c','./Task/MyLoader.c','./Task/MyJsCmdSetDialog.c','./Task/MyQuery.c','./Mainui/MyMainUi.c','./main.c','./Operater/MyOperater.c'],gsrc,dependencies:[gtk_dep,webkitgtk_dep],c_args:['-w','-O2'])
