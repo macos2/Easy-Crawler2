@@ -14,7 +14,7 @@ and make sure your pkg-config, meson and ninja work correctly.
 
 Build
 -----
-Open the terminal,go into the source dir,type `meson build` to make a `build` dir and go into it type 'ninja' . the programme named `easy-crawler2` will maked for you.
+Open the terminal,go into the source dir,type `meson build` to make a `build` dir and go into it type `ninja` . the programme named `easy-crawler2` will maked for you.
 
 Use
 -----
